@@ -78,7 +78,16 @@ export function TerminalLogin({ onLogin, onRegister }: TerminalLoginProps) {
         if (mode === "login") {
           if (step === "username") {
             if (formData.username.trim()) {
-              setStep("password");
+              // Check if user typed "register" to switch to registration mode
+              if (formData.username.trim().toLowerCase() === "register") {
+                setMode("register");
+                setStep("username");
+                setFormData({ username: "", email: "", password: "", confirmPassword: "" });
+                setError("Registration mode activated. Enter your desired username.");
+              } else {
+                setStep("password");
+                setError("");
+              }
             }
           } else if (step === "password") {
             if (formData.password.trim()) {
@@ -108,14 +117,27 @@ export function TerminalLogin({ onLogin, onRegister }: TerminalLoginProps) {
           if (step === "username") {
             if (formData.username.trim()) {
               setStep("email");
+              setError("");
             }
           } else if (step === "email") {
             if (formData.email.trim()) {
+              // Basic email validation
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+              if (!emailRegex.test(formData.email)) {
+                setError("Invalid email format");
+                return;
+              }
               setStep("password");
+              setError("");
             }
           } else if (step === "password") {
             if (formData.password.trim()) {
+              if (formData.password.length < 6) {
+                setError("Password must be at least 6 characters");
+                return;
+              }
               setStep("confirm");
+              setError("");
             }
           } else if (step === "confirm") {
             if (formData.confirmPassword === formData.password) {
@@ -133,6 +155,9 @@ export function TerminalLogin({ onLogin, onRegister }: TerminalLoginProps) {
               } catch (err) {
                 setStep("error");
                 setError(err instanceof Error ? err.message : "Registration failed");
+                setTimeout(() => {
+                  setStep("username");
+                }, 2000);
               }
             } else {
               setError("Passwords do not match");
@@ -191,7 +216,7 @@ export function TerminalLogin({ onLogin, onRegister }: TerminalLoginProps) {
             </div>
           )}
 
-          {/* Login Form */}
+          {/* Login/Register Form */}
           {!bootSequence && (
             <div className="space-y-4">
               {/* ASCII Art Logo */}
@@ -209,6 +234,9 @@ export function TerminalLogin({ onLogin, onRegister }: TerminalLoginProps) {
               {/* Welcome Message */}
               <div className="text-gray-400 text-sm mb-4">
                 Welcome to Super-Task Vibe v2.0
+                {mode === "register" && (
+                  <span className="text-yellow-400 ml-2">[REGISTRATION MODE]</span>
+                )}
               </div>
 
               {/* Error Message */}
@@ -226,7 +254,7 @@ export function TerminalLogin({ onLogin, onRegister }: TerminalLoginProps) {
               )}
 
               {/* Username Input */}
-              {(step === "username" || step === "password") && (
+              {(step === "username" || (step === "password" && mode === "login")) && (
                 <div className="flex items-center gap-2">
                   <span className="text-green-400 whitespace-nowrap">
                     super-task login:
@@ -235,7 +263,8 @@ export function TerminalLogin({ onLogin, onRegister }: TerminalLoginProps) {
                     <input
                       ref={inputRef}
                       type="text"
-                      value={username}
+                      name="username"
+                      value={formData.username}
                       onChange={handleInputChange}
                       onKeyDown={handleKeyDown}
                       className="flex-1 bg-transparent text-green-400 outline-none font-mono"
@@ -244,7 +273,7 @@ export function TerminalLogin({ onLogin, onRegister }: TerminalLoginProps) {
                       autoComplete="username"
                     />
                   ) : (
-                    <span className="text-green-400">{username}</span>
+                    <span className="text-green-400">{formData.username}</span>
                   )}
                   {step === "username" && (
                     <span
@@ -257,22 +286,23 @@ export function TerminalLogin({ onLogin, onRegister }: TerminalLoginProps) {
                 </div>
               )}
 
-              {/* Password Input */}
-              {step === "password" && (
+              {/* Registration: Username Input */}
+              {mode === "register" && step === "username" && (
                 <div className="flex items-center gap-2">
-                  <span className="text-green-400 whitespace-nowrap">
-                    Password:
+                  <span className="text-yellow-400 whitespace-nowrap">
+                    register username:
                   </span>
                   <input
                     ref={inputRef}
-                    type="password"
-                    value={password}
+                    type="text"
+                    name="username"
+                    value={formData.username}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     className="flex-1 bg-transparent text-green-400 outline-none font-mono"
                     autoFocus
                     spellCheck={false}
-                    autoComplete="current-password"
+                    autoComplete="username"
                   />
                   <span
                     className={cn(
@@ -283,11 +313,163 @@ export function TerminalLogin({ onLogin, onRegister }: TerminalLoginProps) {
                 </div>
               )}
 
+              {/* Registration: Email Input */}
+              {mode === "register" && step === "email" && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400 whitespace-nowrap">
+                      Username:
+                    </span>
+                    <span className="text-gray-400">{formData.username}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-400 whitespace-nowrap">
+                      register email:
+                    </span>
+                    <input
+                      ref={inputRef}
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      onKeyDown={handleKeyDown}
+                      className="flex-1 bg-transparent text-green-400 outline-none font-mono"
+                      autoFocus
+                      spellCheck={false}
+                      autoComplete="email"
+                    />
+                    <span
+                      className={cn(
+                        "w-2 h-4 bg-green-400",
+                        cursorVisible ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Registration: Password Input */}
+              {mode === "register" && step === "password" && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400 whitespace-nowrap">
+                      Username:
+                    </span>
+                    <span className="text-gray-400">{formData.username}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400 whitespace-nowrap">
+                      Email:
+                    </span>
+                    <span className="text-gray-400">{formData.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-400 whitespace-nowrap">
+                      register password:
+                    </span>
+                    <input
+                      ref={inputRef}
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      onKeyDown={handleKeyDown}
+                      className="flex-1 bg-transparent text-green-400 outline-none font-mono"
+                      autoFocus
+                      spellCheck={false}
+                      autoComplete="new-password"
+                    />
+                    <span
+                      className={cn(
+                        "w-2 h-4 bg-green-400",
+                        cursorVisible ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Registration: Confirm Password Input */}
+              {mode === "register" && step === "confirm" && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400 whitespace-nowrap">
+                      Username:
+                    </span>
+                    <span className="text-gray-400">{formData.username}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400 whitespace-nowrap">
+                      Email:
+                    </span>
+                    <span className="text-gray-400">{formData.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-400 whitespace-nowrap">
+                      Confirm password:
+                    </span>
+                    <input
+                      ref={inputRef}
+                      type="password"
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      onKeyDown={handleKeyDown}
+                      className="flex-1 bg-transparent text-green-400 outline-none font-mono"
+                      autoFocus
+                      spellCheck={false}
+                      autoComplete="new-password"
+                    />
+                    <span
+                      className={cn(
+                        "w-2 h-4 bg-green-400",
+                        cursorVisible ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Login: Password Input */}
+              {mode === "login" && step === "password" && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400 whitespace-nowrap">
+                      super-task login:
+                    </span>
+                    <span className="text-green-400">{formData.username}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400 whitespace-nowrap">
+                      Password:
+                    </span>
+                    <input
+                      ref={inputRef}
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      onKeyDown={handleKeyDown}
+                      className="flex-1 bg-transparent text-green-400 outline-none font-mono"
+                      autoFocus
+                      spellCheck={false}
+                      autoComplete="current-password"
+                    />
+                    <span
+                      className={cn(
+                        "w-2 h-4 bg-green-400",
+                        cursorVisible ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Loading State */}
               {step === "loading" && (
                 <div className="flex items-center gap-2 text-yellow-400">
                   <span className="animate-spin">⟳</span>
-                  <span>Authenticating...</span>
+                  <span>{mode === "login" ? "Authenticating..." : "Creating account..."}</span>
                 </div>
               )}
 
@@ -295,7 +477,7 @@ export function TerminalLogin({ onLogin, onRegister }: TerminalLoginProps) {
               <div className="text-gray-600 text-xs mt-8">
                 Type your username and press Enter. Type your password and press Enter to login.
                 <br />
-                No account? Type "register" as username to create one.
+                No account? Type &quot;register&quot; as username to create one.
               </div>
             </div>
           )}
