@@ -27,7 +27,7 @@ Two Playwright configs exist:
 
 ## Architecture
 
-**Super-Task Vibe** is a macOS Mojave-aesthetic personal task manager built with Next.js 16 (App Router), React 19, and TypeScript (strict mode). It features a Kanban board, sidebar navigation, task detail sheet, voice assistant, and AI-powered subtask generation.
+**Super-Task Vibe** is a modern task manager built with Next.js 16 (App Router), React 19, and TypeScript (strict mode). It features a Kanban board, sidebar navigation, task detail sheet, voice assistant, AI-powered subtask generation, task tags, archiving, and dependencies.
 
 ### Tech Stack
 
@@ -37,7 +37,7 @@ Two Playwright configs exist:
 - **Voice**: ElevenLabs API (text-to-speech) via `/api/voice` route, Web Speech API (speech recognition)
 - **Drag & Drop**: @dnd-kit (core + sortable), closestCorners collision detection
 - **UI Components**: shadcn/ui (Radix UI primitives + Tailwind CSS) — Dialog, Sheet, Select, Calendar, DropdownMenu, Command, ScrollArea, Tooltip, Badge, Sonner, and more. Components live in `src/components/ui/`.
-- **Styling**: Tailwind CSS 4 beta — CSS-only config via `@theme inline` directive in `src/styles/globals.css`. Mojave dark theme applied globally via `:root` CSS variables (no `tailwind.config.*` or `postcss.config.*` files). shadcn CSS variables (`--background`, `--foreground`, `--primary`, etc.) are mapped through `@theme inline`.
+- **Styling**: Tailwind CSS 4 beta — CSS-only config via `@theme inline` directive in `src/styles/globals.css`. shadcn CSS variables (`--background`, `--foreground`, `--primary`, etc.) are mapped through `@theme inline`.
 - **Animation**: framer-motion for drag, spring animations, and hover micro-interactions
 - **Notifications**: sonner (toast notifications)
 - **Validation**: Zod schemas for env vars (`src/lib/env.ts`) and server action inputs
@@ -46,13 +46,13 @@ Two Playwright configs exist:
 
 - `src/app/` — Next.js App Router pages and API routes
 - `src/components/ui/` — shadcn/ui primitive components (generated, do not hand-edit)
-- `src/components/kanban/` — KanbanBoard, KanbanColumn, KanbanCard, NewTaskDialog, TaskDetailSheet, SubTaskGenerator
-- `src/components/AppSidebar.tsx` — Collapsible sidebar with filter navigation (Inbox, Today, All Tasks)
+- `src/components/kanban/` — KanbanBoard, KanbanColumn, KanbanCard, NewTaskDialog, TaskDetailSheet, SubTaskGenerator, TaskDependencyManager
+- `src/components/AppSidebar.tsx` — Collapsible sidebar with filter navigation (Inbox, Today, All Tasks, Archived)
 - `src/components/Toolbar.tsx` — Search input and filter controls above the Kanban board
 - `src/components/StatusBar.tsx` — Bottom status bar showing task counts and app info
-- `src/components/` — MenuBar (functional dropdowns), Dock (functional navigation), Window (app shell), Wallpaper, VoiceAssistant
-- `src/hooks/` — useRealtimeTasks (5s polling, pauses when tab hidden), useVoiceInput, useVoiceOutput, useKeyboardShortcuts
-- `src/lib/actions/` — Server actions: `tasks.ts` (CRUD), `ai-tasks.ts` (Gemini subtask generation)
+- `src/components/` — MenuBar, Dock, Window, Wallpaper, VoiceAssistant
+- `src/hooks/` — useRealtimeTasks, useVoiceInput, useVoiceOutput, useKeyboardShortcuts
+- `src/lib/actions/` — Server actions: `tasks.ts` (CRUD, archive, tags), `ai-tasks.ts` (Gemini subtask generation), `task-dependencies.ts` (dependency management)
 - `src/lib/types.ts` — Task, CreateTaskInput, UpdateTaskInput, ActionResult<T>, SubTask
 - `src/lib/utils.ts` — `cn()` utility (clsx + tailwind-merge)
 - `src/lib/db.ts` — Turso client singleton
@@ -64,7 +64,6 @@ Two Playwright configs exist:
 - Server actions are imported directly into client components and called as async functions
 - `cn()` utility from `src/lib/utils.ts` is used throughout for conditional class composition
 - Hardcoded user ID (`"personal-vibe-user"`) and project ID (`"00000000-0000-0000-0000-000000000000"`)
-- Mojave dark mode is applied as the single global theme via `:root` CSS variables — no light/dark toggle
 - `dark` class is set on `<html>` to satisfy shadcn/ui component styling expectations
 
 ### Server Action Patterns
@@ -82,17 +81,55 @@ Key operations: `createTask` (UUID via `crypto.randomUUID()`), `getTasks`, `upda
 
 ### Task Schema
 
-Tasks have: id (UUID), title, description, status (`todo`|`in_progress`|`done`), priority (`low`|`medium`|`high`|`critical`), due_date, project_id, user_id, position, created_at, updated_at. Full DDL in `schema.sql`.
+Tasks have: id (UUID), title, description, status (`todo`|`in_progress`|`done`), priority (`low`|`medium`|`high`|`critical`), due_date, project_id, user_id, position, tags (JSON array), archived (boolean), created_at, updated_at. Full DDL in `schema.sql`.
 
 ### Styling Conventions
 
-- **Theme**: macOS Mojave dark theme is the only theme. All colors are defined as CSS custom properties on `:root` in `src/styles/globals.css`.
-- **Theme tokens**: `--color-system-blue/red/orange/yellow/green` for system accent colors; `--color-mac-close/minimize/zoom` for traffic light buttons; `--radius-dock: 18px` for dock corners.
-- **shadcn CSS variables**: `--background`, `--foreground`, `--primary`, `--muted`, `--border`, `--ring`, etc. mapped via `@theme inline` so Tailwind utilities (`bg-background`, `text-foreground`, etc.) work directly.
-- **Glass effects**: `.mojave-glass` — `rgba(30,30,30,0.8)` background with 30px backdrop blur and saturate(180%). Used on the menu bar and dock.
-- **Elevation**: `.window-shadow` for main app window; `.menu-shadow` for dropdowns and popovers.
-- **Font stack**: SF Pro Display/Text, Inter, system-ui (set via `--font-sans` in `@theme inline`)
-- **cn() utility**: Always use `cn()` from `src/lib/utils.ts` for conditional and merged class names.
+- **Framework**: Tailwind CSS 4 beta — CSS-only config via `@theme inline` directive in `src/styles/globals.css`
+- **CSS Variables**: shadcn CSS variables (`--background`, `--foreground`, `--primary`, etc.) mapped via `@theme inline`
+- **Utility**: Always use `cn()` from `src/lib/utils.ts` for conditional and merged class names
+- **Components**: Use shadcn/ui components where possible (Dialog, Sheet, Select, Calendar, DropdownMenu, Command, ScrollArea, Tooltip, Badge, Sonner)
+- **Animation**: Use framer-motion for drag, spring animations, and hover micro-interactions
+
+### Design Philosophy
+
+This project embraces **flexible, modern design patterns** inspired by industry-leading task managers like Linear, Notion, and Todoist. The design should be:
+
+- **Clean and minimal**: Focus on content, not chrome
+- **Keyboard-first**: Support power users with shortcuts (Cmd+K command palette, quick actions)
+- **Contextual**: Show relevant information based on user context
+- **Performant**: Fast interactions, optimistic updates, smooth animations
+- **Accessible**: ARIA labels, keyboard navigation, screen reader support
+
+### Industry-Standard UI Patterns
+
+Based on research of leading task managers (Linear, Notion, Todoist, Asana), implement these patterns:
+
+#### 1. Command Palette (Cmd+K)
+- Fuzzy search across all actions and navigation
+- Keyboard navigation (↑↓ arrows, Enter to select, Esc to close)
+- Categorized results (Navigation, Actions, Settings)
+- Recent commands tracking
+
+#### 2. Bento Grid Layouts
+- Modular, compartmentalized task organization
+- Visual hierarchy through box sizes
+- Responsive grid adaptation
+
+#### 3. Contextual Sidebars
+- Collapsible navigation with icon + text
+- Nested sections for projects/labels
+- Quick filters and counts
+
+#### 4. Smart Input Patterns
+- Natural language task creation ("Meeting tomorrow at 3pm")
+- Inline editing without modal disruption
+- Auto-save with optimistic updates
+
+#### 5. Visual Feedback
+- Smooth drag-and-drop with ghost previews
+- Toast notifications for actions
+- Loading states with skeletons
 
 ### CI
 
