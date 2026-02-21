@@ -1,3 +1,5 @@
+"use client";
+
 import { TerminalLogin } from "@/components/auth/TerminalLogin";
 import { loginUser } from "@/lib/auth/actions";
 
