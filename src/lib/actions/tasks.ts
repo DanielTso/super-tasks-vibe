@@ -5,6 +5,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import type { InValue } from "@libsql/client";
 import type { Task, ActionResult } from "@/lib/types";
+import { checkDependenciesComplete } from "./task-dependencies";
 
 const CreateTaskSchema = z.object({
   title: z.string().min(1).max(200).trim(),
@@ -13,6 +14,7 @@ const CreateTaskSchema = z.object({
   priority: z.enum(["low", "medium", "high", "critical"]),
   due_date: z.string().optional(),
   project_id: z.string(),
+  tags: z.array(z.string().min(1).max(50)).max(10).optional(),
 });
 
 const UpdateTaskSchema = z.object({
@@ -23,13 +25,27 @@ const UpdateTaskSchema = z.object({
   priority: z.enum(["low", "medium", "high", "critical"]).optional(),
   due_date: z.string().nullable().optional(),
   position: z.number().int().min(0).optional(),
+  tags: z.array(z.string().min(1).max(50)).max(10).optional(),
 });
 
 const USER_ID = "personal-vibe-user";
 
 // libSQL returns Row class instances; Next.js requires plain objects for client components
 function toPlainObject<T>(row: Record<string, unknown>): T {
-  return Object.fromEntries(Object.entries(row)) as T;
+  const obj = Object.fromEntries(Object.entries(row)) as Record<string, unknown>;
+  // Parse tags JSON string to array
+  if (typeof obj.tags === "string") {
+    try {
+      obj.tags = JSON.parse(obj.tags);
+    } catch {
+      obj.tags = [];
+    }
+  }
+  // Convert archived integer to boolean
+  if (typeof obj.archived === "number") {
+    obj.archived = obj.archived === 1;
+  }
+  return obj as T;
 }
 
 export async function createTask(
@@ -49,8 +65,8 @@ export async function createTask(
     const position = (posResult.rows[0]?.next_pos as number) ?? 0;
 
     await db.execute({
-      sql: `INSERT INTO tasks (id, title, description, status, priority, due_date, project_id, user_id, position, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+      sql: `INSERT INTO tasks (id, title, description, status, priority, due_date, project_id, user_id, position, tags, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       args: [
         taskId,
         result.data.title,
@@ -61,6 +77,7 @@ export async function createTask(
         result.data.project_id,
         USER_ID,
         position,
+        JSON.stringify(result.data.tags || []),
       ],
     });
 
@@ -80,11 +97,16 @@ export async function createTask(
 }
 
 export async function getTasks(
-  projectId: string
+  projectId: string,
+  includeArchived: boolean = false
 ): Promise<ActionResult<Task[]>> {
   try {
+    const sql = includeArchived
+      ? "SELECT * FROM tasks WHERE project_id = ? AND user_id = ? ORDER BY position ASC"
+      : "SELECT * FROM tasks WHERE project_id = ? AND user_id = ? AND archived = 0 ORDER BY position ASC";
+
     const result = await db.execute({
-      sql: "SELECT * FROM tasks WHERE project_id = ? AND user_id = ? ORDER BY position ASC",
+      sql,
       args: [projectId, USER_ID],
     });
 
@@ -103,14 +125,31 @@ export async function updateTask(
 
   const { id, ...fields } = result.data;
 
+  // Check dependencies if trying to mark as done
+  if (fields.status === "done") {
+    const depsCheck = await checkDependenciesComplete(id);
+    if (depsCheck.error) {
+      return { error: depsCheck.error };
+    }
+    if (depsCheck.data && !depsCheck.data.complete) {
+      const { completed, total } = depsCheck.data;
+      return { error: `Cannot complete task: ${total - completed} of ${total} dependencies incomplete` };
+    }
+  }
+
   // Build dynamic SET clause from provided fields only
   const setClauses: string[] = [];
   const args: InValue[] = [];
 
   for (const [key, value] of Object.entries(fields)) {
     if (value !== undefined) {
-      setClauses.push(`${key} = ?`);
-      args.push(value as InValue);
+      if (key === "tags") {
+        setClauses.push(`tags = ?`);
+        args.push(JSON.stringify(value as string[]));
+      } else {
+        setClauses.push(`${key} = ?`);
+        args.push(value as InValue);
+      }
     }
   }
 
@@ -175,5 +214,86 @@ export async function updateTaskPositions(
   } catch (error) {
     console.error("[updateTaskPositions]", error);
     return { error: "Failed to update task positions" };
+  }
+}
+
+export async function archiveTask(id: string): Promise<ActionResult<Task>> {
+  if (!id) return { error: "Task ID is required" };
+
+  try {
+    await db.execute({
+      sql: "UPDATE tasks SET archived = 1, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+      args: [id, USER_ID],
+    });
+
+    revalidatePath("/");
+
+    const updated = await db.execute({
+      sql: "SELECT * FROM tasks WHERE id = ?",
+      args: [id],
+    });
+
+    if (!updated.rows[0]) return { error: "Task not found" };
+    return { data: toPlainObject<Task>(updated.rows[0] as Record<string, unknown>) };
+  } catch (error) {
+    console.error("[archiveTask]", error);
+    return { error: "Failed to archive task" };
+  }
+}
+
+export async function unarchiveTask(id: string): Promise<ActionResult<Task>> {
+  if (!id) return { error: "Task ID is required" };
+
+  try {
+    await db.execute({
+      sql: "UPDATE tasks SET archived = 0, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+      args: [id, USER_ID],
+    });
+
+    revalidatePath("/");
+
+    const updated = await db.execute({
+      sql: "SELECT * FROM tasks WHERE id = ?",
+      args: [id],
+    });
+
+    if (!updated.rows[0]) return { error: "Task not found" };
+    return { data: toPlainObject<Task>(updated.rows[0] as Record<string, unknown>) };
+  } catch (error) {
+    console.error("[unarchiveTask]", error);
+    return { error: "Failed to unarchive task" };
+  }
+}
+
+export async function getArchivedTasks(
+  projectId: string
+): Promise<ActionResult<Task[]>> {
+  try {
+    const result = await db.execute({
+      sql: "SELECT * FROM tasks WHERE project_id = ? AND user_id = ? AND archived = 1 ORDER BY position ASC",
+      args: [projectId, USER_ID],
+    });
+
+    return { data: result.rows.map((row) => toPlainObject<Task>(row as Record<string, unknown>)) };
+  } catch (error) {
+    console.error("[getArchivedTasks]", error);
+    return { error: "Failed to fetch archived tasks" };
+  }
+}
+
+export async function archiveAllDoneTasks(
+  projectId: string
+): Promise<ActionResult<{ count: number }>> {
+  try {
+    const result = await db.execute({
+      sql: "UPDATE tasks SET archived = 1, updated_at = datetime('now') WHERE project_id = ? AND user_id = ? AND status = 'done' AND archived = 0",
+      args: [projectId, USER_ID],
+    });
+
+    revalidatePath("/");
+    return { data: { count: result.rowsAffected } };
+  } catch (error) {
+    console.error("[archiveAllDoneTasks]", error);
+    return { error: "Failed to archive completed tasks" };
   }
 }

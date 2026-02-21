@@ -36,10 +36,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CalendarDays, Trash2 } from "lucide-react";
+import { CalendarDays, Trash2, Archive, ArchiveRestore } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { updateTask, deleteTask } from "@/lib/actions/tasks";
+import { updateTask, deleteTask, archiveTask, unarchiveTask } from "@/lib/actions/tasks";
 import { SubTaskGenerator } from "./SubTaskGenerator";
+import { TaskDependencyManager } from "./TaskDependencyManager";
+import { TagInput } from "@/components/ui/tag-input";
 import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
 
 interface TaskDetailSheetProps {
@@ -69,6 +71,7 @@ export function TaskDetailSheet({
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [status, setStatus] = useState<TaskStatus>("todo");
   const [dueDate, setDueDate] = useState<Date | undefined>();
+  const [tags, setTags] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -78,6 +81,7 @@ export function TaskDetailSheet({
       setPriority(task.priority);
       setStatus(task.status);
       setDueDate(task.due_date ? new Date(task.due_date) : undefined);
+      setTags(task.tags || []);
     }
   }, [task]);
 
@@ -92,6 +96,7 @@ export function TaskDetailSheet({
       priority,
       status,
       due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
+      tags,
     });
     setIsSaving(false);
     onTaskUpdated?.();
@@ -103,12 +108,35 @@ export function TaskDetailSheet({
     onTaskDeleted?.();
   };
 
+  const handleArchive = async () => {
+    await archiveTask(task.id);
+    onTaskUpdated?.();
+  };
+
+  const handleUnarchive = async () => {
+    await unarchiveTask(task.id);
+    onTaskUpdated?.();
+  };
+
+  const handleArchive = async () => {
+    await archiveTask(task.id);
+    onOpenChange(false);
+    onTaskUpdated?.();
+  };
+
+  const handleUnarchive = async () => {
+    await unarchiveTask(task.id);
+    onOpenChange(false);
+    onTaskUpdated?.();
+  };
+
   const hasChanges =
     title !== task.title ||
     description !== (task.description || "") ||
     priority !== task.priority ||
     status !== task.status ||
-    (dueDate?.toISOString().split("T")[0] || null) !== task.due_date;
+    (dueDate?.toISOString().split("T")[0] || null) !== task.due_date ||
+    JSON.stringify(tags.sort()) !== JSON.stringify((task.tags || []).sort());
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -118,27 +146,69 @@ export function TaskDetailSheet({
             <Badge variant="outline" className={cn("text-[10px] uppercase", PRIORITY_COLORS[priority])}>
               {priority}
             </Badge>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2">
-                  <Trash2 className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-1">
+              {/* Archive/Unarchive Button */}
+              {task.archived ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleUnarchive}
+                  className="text-muted-foreground hover:text-foreground hover:bg-accent h-7 px-2"
+                  title="Unarchive task"
+                >
+                  <ArchiveRestore className="w-3.5 h-3.5" />
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="bg-card border-border menu-shadow">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete task?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete &ldquo;{task.title}&rdquo;. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              ) : (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-foreground hover:bg-accent h-7 px-2"
+                      title="Archive task"
+                    >
+                      <Archive className="w-3.5 h-3.5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-card border-border menu-shadow">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Archive task?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will archive &ldquo;{task.title}&rdquo;. Archived tasks are hidden from the main view but can be accessed from the Archived filter.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleArchive} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        Archive
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              {/* Delete Button */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-card border-border menu-shadow">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete task?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete &ldquo;{task.title}&rdquo;. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
           <SheetTitle className="sr-only">Task Details</SheetTitle>
         </SheetHeader>
@@ -219,6 +289,18 @@ export function TaskDetailSheet({
 
           <div>
             <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5">
+              Tags
+            </label>
+            <TagInput
+              tags={tags}
+              onChange={setTags}
+              placeholder="Add tags..."
+              maxTags={10}
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5">
               Description
             </label>
             <Textarea
@@ -229,6 +311,10 @@ export function TaskDetailSheet({
               className="bg-input border-border resize-none text-[13px]"
             />
           </div>
+
+          <Separator className="bg-border" />
+
+          <TaskDependencyManager task={task} onDependencyChanged={onTaskUpdated} />
 
           <Separator className="bg-border" />
 
