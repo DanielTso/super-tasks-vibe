@@ -1,152 +1,242 @@
-# Super-Task Vibe - Product Development Plan
+# Super-Task Vibe - Implementation Roadmap
 
-## Current State Assessment
+## Current Status: MVP with Advanced Features
+✅ Kanban board with drag-drop
+✅ Task tags, archiving, dependencies
+✅ AI subtask generation (Gemini)
+✅ Voice assistant (ElevenLabs)
+✅ Real-time sync (polling)
 
-### ✅ What's Built (50 source files)
-1. **Core Task Management**
-   - Kanban board with drag-and-drop (@dnd-kit)
-   - Task CRUD operations
-   - Task status: todo, in_progress, done
-   - Task priority: low, medium, high, critical
-   - Due dates
-   - Position ordering within columns
+## Phase 1: Authentication & Landing Page (Priority: CRITICAL)
 
-2. **Advanced Features**
-   - **Task Tags**: JSON array, filtering, badge display
-   - **Task Archiving**: Archive/unarchive, bulk archive done tasks
-   - **Task Dependencies**: Block completion if prerequisites incomplete, circular dependency detection
-   - **AI Subtask Generation**: Gemini 2.0 Flash integration
-   - **Voice Assistant**: ElevenLabs TTS + Web Speech API
+### 1.1 Linux OS-Style Landing Page
+**Goal**: Create a terminal/console aesthetic landing page with "boot sequence" animation
 
-3. **UI Components**
-   - shadcn/ui components (Dialog, Sheet, Select, Calendar, DropdownMenu, Command, etc.)
-   - Custom components: MenuBar, Dock, Window, AppSidebar, Toolbar, StatusBar
-   - Kanban components: KanbanBoard, KanbanColumn, KanbanCard, NewTaskDialog, TaskDetailSheet
-   - Voice components: VoiceAssistant
+**Components**:
+- [ ] Terminal-style login screen
+- [ ] Boot sequence animation (kernel loading, services starting)
+- [ ] Username/password input with terminal cursor
+- [ ] ASCII art logo
+- [ ] "Login" command or Enter key submission
+- [ ] Error messages in terminal style (red text)
+- [ ] Success animation (green checkmark)
 
-4. **Technical Stack**
-   - Next.js 16 App Router
-   - React 19 + TypeScript (strict mode)
-   - Tailwind CSS 4 beta
-   - Turso (LibSQL) database
-   - Server Actions for mutations
-   - Real-time polling (5s) with useRealtimeTasks hook
+**Design Inspiration**:
+- Black/dark terminal background
+- Monospace font (JetBrains Mono, Fira Code)
+- Green/amber text (classic terminal colors)
+- Blinking cursor
+- Command-line interface feel
 
-### ⚠️ What's Missing for Production
+### 1.2 Authentication System
+**Goal**: Secure user authentication with JWT sessions
 
-#### 1. Authentication & Security (Critical)
-- [ ] User authentication system (OAuth, email/password, or magic links)
-- [ ] Session management
-- [ ] Protected routes
-- [ ] Password reset flow
-- [ ] Rate limiting on API routes
-- [ ] Input sanitization and XSS protection
+**Database Schema**:
+```sql
+-- Users table
+CREATE TABLE users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  username TEXT UNIQUE NOT NULL,
+  display_name TEXT,
+  avatar_url TEXT,
+  is_active INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Sessions table (for server-side sessions)
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  token TEXT UNIQUE NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Update tasks to link to users properly
+-- (Already has user_id, but now it references users table)
+```
+
+**Server Actions**:
+- [ ] `registerUser` - Create new account with bcrypt password hashing
+- [ ] `loginUser` - Validate credentials, create session
+- [ ] `logoutUser` - Destroy session
+- [ ] `getCurrentUser` - Get logged-in user from session
+- [ ] `updateUserProfile` - Update display name, avatar
+- [ ] `changePassword` - Secure password change flow
+
+**Middleware**:
+- [ ] `middleware.ts` - Protect routes, check auth status
+- [ ] Redirect unauthenticated users to landing page
+- [ ] Redirect authenticated users away from landing page
+
+**Security Measures**:
+- [ ] bcrypt for password hashing (10+ rounds)
+- [ ] JWT tokens with expiration
+- [ ] HttpOnly cookies for session tokens
 - [ ] CSRF protection
+- [ ] Rate limiting on auth endpoints
+- [ ] Input validation with Zod
+- [ ] SQL injection protection (parameterized queries already in place)
 
-#### 2. Multi-User & Collaboration
-- [ ] Multiple users per project
-- [ ] Role-based access control (RBAC)
-- [ ] Real-time collaboration (WebSockets or Server-Sent Events)
-- [ ] Activity feed/audit log
-- [ ] Comments on tasks
-- [ ] @mentions system
+### 1.3 Landing Page Implementation
+**File Structure**:
+```
+src/
+  app/
+    (auth)/
+      login/
+        page.tsx          # Linux-style terminal login
+      register/
+        page.tsx          # Registration page
+      layout.tsx          # Auth layout (no sidebar, etc.)
+    (app)/
+      layout.tsx          # Main app layout (with sidebar, etc.)
+      page.tsx            # Main task manager
+  components/
+    auth/
+      TerminalLogin.tsx   # Linux terminal-style login component
+      BootSequence.tsx    # Boot animation component
+  lib/
+    auth/
+      session.ts         # Session management
+      password.ts        # Password hashing utilities
+```
 
-#### 3. Project Management
-- [ ] Multiple projects (not just hardcoded single project)
-- [ ] Project templates
-- [ ] Project settings and configuration
-- [ ] Team/workspace management
-- [ ] Project archiving
+## Phase 2: Core Product Features (Priority: HIGH)
 
-#### 4. Advanced Task Features
-- [ ] Recurring tasks
-- [ ] Subtasks (hierarchical tasks)
-- [ ] Time tracking
-- [ ] Task estimates and actual time
-- [ ] Task attachments/file uploads
-- [ ] Task templates
-- [ ] Bulk operations on tasks
-- [ ] Task history/audit trail
+### 2.1 Multiple Projects
+- [ ] Create projects table
+- [ ] Project creation/management UI
+- [ ] Project switcher in sidebar
+- [ ] Project-specific settings
 
-#### 5. Views & Visualization
-- [ ] List view (alternative to Kanban)
-- [ ] Calendar view
-- [ ] Timeline/Gantt view
-- [ ] Dashboard with metrics
-- [ ] Custom filters and saved views
-- [ ] Search with filters
+### 2.2 List View + Calendar View
+- [ ] Toggle between Kanban and List views
+- [ ] Calendar view with month/week/day modes
+- [ ] Drag-and-drop in calendar
+- [ ] Date-based navigation
 
-#### 6. Notifications & Integrations
-- [ ] Email notifications
-- [ ] Push notifications
-- [ ] Slack integration
-- [ ] Calendar integration (Google, Outlook)
+### 2.3 Subtasks (Hierarchical)
+- [ ] Subtasks table with parent_task_id
+- [ ] Nested task display in UI
+- [ ] Progress calculation based on subtasks
+- [ ] Collapsible subtask lists
+
+### 2.4 Comments & Activity Feed
+- [ ] Comments table
+- [ ] Activity log table
+- [ ] Comment UI in task detail
+- [ ] Activity feed sidebar
+- [ ] @mentions with notifications
+
+## Phase 3: Power User Features (Priority: MEDIUM)
+
+### 3.1 Recurring Tasks
+- [ ] Recurrence pattern storage
+- [ ] Cron job or scheduled function
+- [ ] Recurrence UI in task creation
+
+### 3.2 Time Tracking
+- [ ] Time entries table
+- [ ] Start/stop timer UI
+- [ ] Time reports and analytics
+
+### 3.3 Advanced Filters & Saved Views
+- [ ] Complex filter builder
+- [ ] Saved views per user
+- [ ] Shareable views
+
+### 3.4 Bulk Operations
+- [ ] Multi-select tasks
+- [ ] Bulk status change
+- [ ] Bulk archive/delete
+- [ ] Bulk tag assignment
+
+## Phase 4: Integrations & Scale (Priority: LOW)
+
+### 4.1 Notifications
+- [ ] Email notifications (Resend/Postmark)
+- [ ] Push notifications (OneSignal/Pusher)
+- [ ] Notification preferences
+
+### 4.2 Integrations
+- [ ] Slack bot
+- [ ] GitHub issues sync
+- [ ] Google Calendar sync
 - [ ] Webhook support
-- [ ] API for third-party integrations
 
-#### 7. Performance & Scalability
-- [ ] Database indexing optimization
-- [ ] Pagination for large task lists
-- [ ] Image optimization
-- [ ] Caching strategy (Redis or similar)
-- [ ] CDN for static assets
-- [ ] Database connection pooling
+### 4.3 API & Webhooks
+- [ ] REST API
+- [ ] GraphQL (optional)
+- [ ] Webhook management UI
+- [ ] API documentation
 
-#### 8. Testing & Quality
-- [ ] Unit tests (Jest/Vitest)
-- [ ] Integration tests
-- [ ] E2E test coverage expansion
-- [ ] Performance testing
-- [ ] Accessibility testing (axe-core)
-- [ ] Security audit
+### 4.4 Performance & Scale
+- [ ] Redis caching
+- [ ] Database optimization
+- [ ] CDN setup
+- [ ] Load testing
 
-#### 9. DevOps & Deployment
-- [ ] Docker containerization
-- [ ] CI/CD pipeline improvements
-- [ ] Environment management (dev, staging, prod)
-- [ ] Monitoring and logging (Sentry, LogRocket)
-- [ ] Backup and disaster recovery
-- [ ] SSL/TLS configuration
+## Security Checklist
 
-#### 10. Landing Page & Marketing
-- [ ] Landing page with Linux OS-style sign-in
-- [ ] Product features showcase
-- [ ] Pricing page (if applicable)
-- [ ] Documentation site
-- [ ] Blog for SEO
+### Authentication & Authorization
+- [ ] bcrypt password hashing (12+ rounds)
+- [ ] JWT with short expiration + refresh tokens
+- [ ] HttpOnly, Secure, SameSite cookies
+- [ ] CSRF protection
+- [ ] Rate limiting (5 attempts per 15 min)
+- [ ] Account lockout after failed attempts
+- [ ] Password strength requirements
+- [ ] 2FA support (TOTP)
 
-## Recommended Priority Order
+### Data Protection
+- [ ] Input sanitization (XSS prevention)
+- [ ] SQL injection protection (parameterized queries ✓)
+- [ ] Output encoding
+- [ ] Content Security Policy headers
+- [ ] Secure headers (HSTS, X-Frame-Options, etc.)
+- [ ] Data encryption at rest (if needed)
+- [ ] GDPR compliance (data export, deletion)
 
-### Phase 1: Foundation (Weeks 1-2)
-1. Authentication system
-2. Multi-project support
-3. Landing page with Linux-style sign-in
-4. Security hardening
+### Infrastructure
+- [ ] HTTPS only
+- [ ] Environment variables for secrets
+- [ ] No sensitive data in logs
+- [ ] Dependency scanning (npm audit)
+- [ ] Container security (if using Docker)
+- [ ] Database backup strategy
 
-### Phase 2: Core Features (Weeks 3-4)
-5. List view + Calendar view
-6. Subtasks (hierarchical)
-7. Comments and @mentions
-8. Real-time collaboration
+## Recommended Tech Stack Additions
 
-### Phase 3: Power User Features (Weeks 5-6)
-9. Recurring tasks
-10. Time tracking
-11. Advanced filters and saved views
-12. Bulk operations
+### For Authentication
+- **next-auth** (Auth.js v5) - Flexible authentication
+- **bcryptjs** - Password hashing
+- **jose** - JWT handling
 
-### Phase 4: Integrations & Polish (Weeks 7-8)
-13. Slack integration
-14. Email notifications
-15. Performance optimization
-16. Testing coverage
+### For Real-time Features
+- **Socket.io** or **PartyKit** - Real-time collaboration
+- **Redis** - Session store, caching, pub/sub
 
-## Next Steps
+### For File Uploads
+- **UploadThing** or **AWS S3** - File storage
+- **Sharp** - Image optimization
 
-Would you like me to:
-1. Start implementing the authentication system with Linux OS-style sign-in?
-2. Create the landing page first?
-3. Set up the Notion database for project tracking?
-4. Begin with security hardening?
+### For Email
+- **Resend** or **Postmark** - Transactional emails
 
-Let me know your preference and I'll start building!
+### For Monitoring
+- **Sentry** - Error tracking
+- **LogRocket** or **PostHog** - Session replay and analytics
+
+## Next Immediate Actions
+
+1. **Create Linux OS-style landing page** with terminal aesthetic
+2. **Implement authentication system** with proper security
+3. **Add middleware** for route protection
+4. **Create user registration/login flows**
+
+Would you like me to start implementing the Linux OS-style landing page with the terminal aesthetic? This will be the foundation for the authentication system and give the product a unique, memorable identity.
