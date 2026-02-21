@@ -3,6 +3,7 @@
 import { Search, Plus, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,9 @@ interface ToolbarProps {
   onNewTask: () => void;
   onFilterPriority?: (priority: TaskPriority | null) => void;
   onFilterStatus?: (status: TaskStatus | null) => void;
+  onFilterTag?: (tag: string | null) => void;
+  availableTags?: string[];
+  activeTag?: string | null;
 }
 
 export function Toolbar({
@@ -27,6 +31,9 @@ export function Toolbar({
   onNewTask,
   onFilterPriority,
   onFilterStatus,
+  onFilterTag,
+  availableTags = [],
+  activeTag = null,
 }: ToolbarProps) {
   return (
     <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-[#303030] shrink-0">
@@ -59,6 +66,25 @@ export function Toolbar({
           <DropdownMenuItem onClick={() => onFilterStatus?.("todo")}>Todo</DropdownMenuItem>
           <DropdownMenuItem onClick={() => onFilterStatus?.("in_progress")}>In Progress</DropdownMenuItem>
           <DropdownMenuItem onClick={() => onFilterStatus?.("done")}>Done</DropdownMenuItem>
+
+          {availableTags.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[11px] text-muted-foreground">Tags</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => onFilterTag?.(null)}>
+                {activeTag ? "Clear Filter" : "All Tags"}
+              </DropdownMenuItem>
+              {availableTags.map((tag) => (
+                <DropdownMenuItem
+                  key={tag}
+                  onClick={() => onFilterTag?.(tag)}
+                  className={cn(activeTag === tag && "bg-accent")}
+                >
+                  {tag}
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

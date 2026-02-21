@@ -1,16 +1,16 @@
 "use client";
 
-import { Inbox, CalendarDays, ListTodo, FolderOpen } from "lucide-react";
+import { Inbox, CalendarDays, ListTodo, FolderOpen, Archive } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
-export type SidebarFilter = "inbox" | "today" | "all";
+export type SidebarFilter = "inbox" | "today" | "all" | "archived";
 
 interface AppSidebarProps {
   activeFilter: SidebarFilter;
   onFilterChange: (filter: SidebarFilter) => void;
-  taskCounts: { inbox: number; today: number; all: number };
+  taskCounts: { inbox: number; today: number; all: number; archived: number };
   isCollapsed: boolean;
 }
 
@@ -18,6 +18,7 @@ const FILTERS = [
   { id: "inbox" as const, label: "Inbox", icon: Inbox },
   { id: "today" as const, label: "Today", icon: CalendarDays },
   { id: "all" as const, label: "All Tasks", icon: ListTodo },
+  { id: "archived" as const, label: "Archived", icon: Archive },
 ];
 
 export function AppSidebar({

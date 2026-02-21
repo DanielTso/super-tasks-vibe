@@ -25,14 +25,15 @@ function isToday(dateStr: string | null): boolean {
 }
 
 export default function Home() {
-  const { tasks, refreshTasks, isLoading } = useRealtimeTasks(PROJECT_ID);
+  const [sidebarFilter, setSidebarFilter] = useState<SidebarFilter>("inbox");
+  const { tasks, refreshTasks, isLoading } = useRealtimeTasks(PROJECT_ID, sidebarFilter === "archived");
 
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarFilter, setSidebarFilter] = useState<SidebarFilter>("inbox");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState<TaskPriority | null>(null);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | null>(null);
+  const [filterTag, setFilterTag] = useState<string | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -46,10 +47,20 @@ export default function Home() {
 
   // Sidebar filter counts
   const taskCounts = useMemo(() => ({
-    inbox: tasks.length,
-    today: tasks.filter((t) => isToday(t.due_date)).length,
-    all: tasks.length,
+    inbox: tasks.filter((t) => !t.archived).length,
+    today: tasks.filter((t) => !t.archived && isToday(t.due_date)).length,
+    all: tasks.filter((t) => !t.archived).length,
+    archived: tasks.filter((t) => t.archived).length,
   }), [tasks]);
+
+  // Extract all unique tags from tasks
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    tasks.forEach((task) => {
+      task.tags?.forEach((tag) => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+  }, [tasks]);
 
   // Apply all filters
   const filteredTasks = useMemo(() => {
@@ -76,8 +87,12 @@ export default function Home() {
       result = result.filter((t) => t.status === filterStatus);
     }
 
+    if (filterTag) {
+      result = result.filter((t) => t.tags?.includes(filterTag));
+    }
+
     return result;
-  }, [tasks, sidebarFilter, searchQuery, filterPriority, filterStatus]);
+  }, [tasks, sidebarFilter, searchQuery, filterPriority, filterStatus, filterTag]);
 
   const handleTaskClick = useCallback((task: Task) => {
     setSelectedTask(task);
@@ -129,6 +144,9 @@ export default function Home() {
                 onNewTask={() => setNewTaskOpen(true)}
                 onFilterPriority={setFilterPriority}
                 onFilterStatus={setFilterStatus}
+                onFilterTag={setFilterTag}
+                availableTags={availableTags}
+                activeTag={filterTag}
               />
 
               <div className="flex-1 overflow-hidden p-4">

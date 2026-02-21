@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { getTasks } from "@/lib/actions/tasks";
 import type { Task } from "@/lib/types";
 
-export function useRealtimeTasks(projectId: string) {
+export function useRealtimeTasks(projectId: string, includeArchived: boolean = false) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const isFetchingRef = useRef(false);
@@ -14,7 +14,7 @@ export function useRealtimeTasks(projectId: string) {
     isFetchingRef.current = true;
 
     try {
-      const result = await getTasks(projectId);
+      const result = await getTasks(projectId, includeArchived);
       if (result.data) {
         setTasks((prev) => {
           const next = result.data as Task[];
@@ -26,7 +26,7 @@ export function useRealtimeTasks(projectId: string) {
       isFetchingRef.current = false;
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, includeArchived]);
 
   useEffect(() => {
     refreshTasks();

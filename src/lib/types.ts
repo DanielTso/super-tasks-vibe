@@ -11,6 +11,8 @@ export interface Task {
   project_id: string;
   user_id: string;
   position: number;
+  tags: string[];
+  archived: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +24,7 @@ export interface CreateTaskInput {
   priority: TaskPriority;
   due_date?: string;
   project_id: string;
+  tags?: string[];
 }
 
 export interface UpdateTaskInput {
@@ -32,6 +35,8 @@ export interface UpdateTaskInput {
   priority?: TaskPriority;
   due_date?: string | null;
   position?: number;
+  tags?: string[];
+  archived?: boolean;
 }
 
 export type ActionResult<T> =

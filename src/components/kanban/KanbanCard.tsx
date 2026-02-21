@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarDays, GitBranch, Lock, Tag } from "lucide-react";
+import { CalendarDays, GitBranch, Lock, Tag, Archive } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -93,7 +93,8 @@ export function KanbanCard({ task, isOverlay, onClick }: KanbanCardProps) {
       className={cn(
         "bg-card p-3 rounded-[8px] border border-border cursor-grab active:cursor-grabbing hover:border-primary/40 transition-colors",
         isOverlay && "border-primary/40 shadow-xl scale-[1.02] z-50",
-        hasIncompleteDeps && "border-system-orange/30 bg-system-orange/5"
+        hasIncompleteDeps && "border-system-orange/30 bg-system-orange/5",
+        task.archived && "opacity-60 bg-muted/50"
       )}
     >
       <div className="flex items-start justify-between mb-2">
@@ -103,11 +104,18 @@ export function KanbanCard({ task, isOverlay, onClick }: KanbanCardProps) {
         >
           {task.priority}
         </Badge>
-        {hasIncompleteDeps && (
-          <div className="flex items-center gap-1 text-system-orange" title="Has incomplete dependencies">
-            <Lock className="w-3 h-3" />
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          {task.archived && (
+            <div className="flex items-center gap-1 text-muted-foreground" title="Archived">
+              <Archive className="w-3 h-3" />
+            </div>
+          )}
+          {hasIncompleteDeps && (
+            <div className="flex items-center gap-1 text-system-orange" title="Has incomplete dependencies">
+              <Lock className="w-3 h-3" />
+            </div>
+          )}
+        </div>
       </div>
 
       <h3 className="text-[13px] font-semibold text-foreground leading-tight mb-1">

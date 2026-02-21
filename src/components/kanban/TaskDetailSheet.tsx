@@ -42,6 +42,7 @@ import { updateTask, deleteTask, archiveTask, unarchiveTask } from "@/lib/action
 import { SubTaskGenerator } from "./SubTaskGenerator";
 import { TaskDependencyManager } from "./TaskDependencyManager";
 import { TagInput } from "@/components/ui/tag-input";
+import { toast } from "sonner";
 import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
 
 interface TaskDetailSheetProps {
@@ -109,23 +110,23 @@ export function TaskDetailSheet({
   };
 
   const handleArchive = async () => {
-    await archiveTask(task.id);
-    onTaskUpdated?.();
-  };
-
-  const handleUnarchive = async () => {
-    await unarchiveTask(task.id);
-    onTaskUpdated?.();
-  };
-
-  const handleArchive = async () => {
-    await archiveTask(task.id);
+    const result = await archiveTask(task.id);
+    if (result.data) {
+      toast.success("Task archived");
+    } else {
+      toast.error(result.error || "Failed to archive task");
+    }
     onOpenChange(false);
     onTaskUpdated?.();
   };
 
   const handleUnarchive = async () => {
-    await unarchiveTask(task.id);
+    const result = await unarchiveTask(task.id);
+    if (result.data) {
+      toast.success("Task unarchived");
+    } else {
+      toast.error(result.error || "Failed to unarchive task");
+    }
     onOpenChange(false);
     onTaskUpdated?.();
   };

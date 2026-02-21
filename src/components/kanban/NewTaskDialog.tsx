@@ -23,10 +23,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createTask } from "@/lib/actions/tasks";
 import type { TaskPriority, TaskStatus } from "@/lib/types";
+import { TagInput } from "@/components/ui/tag-input";
 
 interface NewTaskDialogProps {
   projectId: string;
@@ -46,6 +47,7 @@ export function NewTaskDialog({
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [status, setStatus] = useState<TaskStatus>("todo");
   const [dueDate, setDueDate] = useState<Date | undefined>();
+  const [tags, setTags] = useState<string[]>([]);
   const [isPending, setIsPending] = useState(false);
 
   const resetForm = () => {
@@ -54,6 +56,7 @@ export function NewTaskDialog({
     setPriority("medium");
     setStatus("todo");
     setDueDate(undefined);
+    setTags([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,6 +71,7 @@ export function NewTaskDialog({
       priority,
       due_date: dueDate ? dueDate.toISOString().split("T")[0] : undefined,
       project_id: projectId,
+      tags: tags.length > 0 ? tags : undefined,
     });
 
     setIsPending(false);
@@ -173,6 +177,18 @@ export function NewTaskDialog({
                 />
               </PopoverContent>
             </Popover>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5">
+              Tags
+            </label>
+            <TagInput
+              tags={tags}
+              onChange={setTags}
+              placeholder="Add tags..."
+              maxTags={10}
+            />
           </div>
 
           <div className="flex gap-3 pt-2">
