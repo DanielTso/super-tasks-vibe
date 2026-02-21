@@ -1,0 +1,46 @@
+[      25ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/:0
+[     163ms] ZodError: [
+  {
+    "expected": "string",
+    "code": "invalid_type",
+    "path": [
+      "TURSO_DATABASE_URL"
+    ],
+    "message": "Invalid input: expected string, received undefined"
+  },
+  {
+    "expected": "string",
+    "code": "invalid_type",
+    "path": [
+      "TURSO_AUTH_TOKEN"
+    ],
+    "message": "Invalid input: expected string, received undefined"
+  },
+  {
+    "expected": "string",
+    "code": "invalid_type",
+    "path": [
+      "GOOGLE_GENERATIVE_AI_API_KEY"
+    ],
+    "message": "Invalid input: expected string, received undefined"
+  },
+  {
+    "expected": "string",
+    "code": "invalid_type",
+    "path": [
+      "ELEVENLABS_API_KEY"
+    ],
+    "message": "Invalid input: expected string, received undefined"
+  }
+]
+    at module evaluation (file:///media/denny/DevVault/claude-projects/super-tasks-ai/.next/dev/server/edge/chunks/[root-of-the-server]__a4cdac28._.js:30:87)
+    at <unknown> (file:///media/denny/DevVault/claude-projects/super-tasks-ai/.next/dev/server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_bb1b110f.js:879:13)
+    at runModuleExecutionHooks (file:///media/denny/DevVault/claude-projects/super-tasks-ai/.next/dev/server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_bb1b110f.js:917:9)
+    at instantiateModule (file:///media/denny/DevVault/claude-projects/super-tasks-ai/.next/dev/server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_bb1b110f.js:877:9)
+    at getOrInstantiateModuleFromParent (file:///media/denny/DevVault/claude-projects/super-tasks-ai/.next/dev/server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_bb1b110f.js:830:12)
+    at DevContext.esmImport [as i] (file:///media/denny/DevVault/claude-projects/super-tasks-ai/.next/dev/server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_bb1b110f.js:238:20)
+    at module evaluation (file:///media/denny/DevVault/claude-projects/super-tasks-ai/.next/dev/server/edge/chunks/[root-of-the-server]__a4cdac28._.js:45:151)
+    at <unknown> (file:///media/denny/DevVault/claude-projects/super-tasks-ai/.next/dev/server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_bb1b110f.js:879:13)
+    at runModuleExecutionHooks (file:///media/denny/DevVault/claude-projects/super-tasks-ai/.next/dev/server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_bb1b110f.js:917:9)
+    at instantiateModule (file:///media/denny/DevVault/claude-projects/super-tasks-ai/.next/dev/server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_bb1b110f.js:877:9)
+[     168ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
